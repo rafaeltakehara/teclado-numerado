@@ -1,0 +1,925 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0d0f15">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}</style>
+</head>
+<body>
+<title>Teclado Numerado</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Nunito+Sans:opsz,wght@6..12,400;6..12,600;6..12,700&display=swap">
+<style>
+/* Layout: palco escuro como uma tela de app. Biblioteca de músicas -> ficha da música -> sessão em tela cheia com notas caindo sobre o teclado. */
+:root {
+  --bg: #0d0f15;
+  --surface: #171a23;
+  --surface-2: #20242f;
+  --line: #2c3140;
+  --ink: #eef0f6;
+  --muted: #9097aa;
+  --rh: #ff8a3d;        /* mão direita: blocos laranja */
+  --rh-deep: #c95a17;
+  --lh: #8f7cff;        /* mão esquerda: blocos violeta */
+  --lh-deep: #5b47d6;
+  --hit: #3fd8ea;       /* tecla que você tocou */
+  --ok: #4ade80;
+  --bad: #ff5d5d;
+  --font-display: "Baloo 2", "Trebuchet MS", system-ui, sans-serif;
+  --font-body: "Nunito Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+[hidden] { display: none !important; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 16px; line-height: 1.5; }
+button { font: inherit; color: inherit; cursor: pointer; }
+:focus-visible { outline: 3px solid var(--hit); outline-offset: 2px; }
+h1, h2, h3 { font-family: var(--font-display); line-height: 1.1; margin: 0; text-wrap: balance; }
+
+.screen { max-width: 1100px; margin: 0 auto; padding-inline: 16px; padding-block: 24px 48px; display: grid; gap: 22px; }
+
+/* ---------- Biblioteca ---------- */
+.lib-head { display: grid; gap: 6px; }
+.eyebrow { font-size: .78rem; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--rh); }
+.lib-head h1 { font-size: clamp(1.9rem, 4.5vw, 2.8rem); font-weight: 800; }
+.lib-head p { margin: 0; color: var(--muted); max-width: 60ch; }
+.filters { display: flex; flex-wrap: wrap; gap: 8px; }
+.pill {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 999px;
+  padding: 7px 14px; font-weight: 600; font-size: .92rem;
+}
+.pill[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px; }
+.card {
+  display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 14px; align-items: center;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 16px;
+  padding: 14px; text-align: left;
+  transition: transform .12s, border-color .12s;
+}
+.card:hover { transform: translateY(-2px); border-color: #3d4458; }
+.card h3 { font-size: 1.15rem; font-weight: 700; }
+.card .by { color: var(--muted); font-size: .88rem; }
+.meta-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; align-items: center; }
+.tag { font-size: .72rem; font-weight: 700; letter-spacing: .04em; padding: 2px 8px; border-radius: 999px; background: rgba(63,216,234,.14); color: var(--hit); }
+.level { display: inline-flex; gap: 3px; }
+.level i { width: 6px; height: 6px; border-radius: 50%; background: var(--line); }
+.level i.on { background: var(--rh); }
+.mono {
+  width: 58px; height: 58px; border-radius: 50%;
+  display: grid; place-items: center;
+  font-family: var(--font-display); font-weight: 800; font-size: 1.15rem; color: #fff;
+  box-shadow: inset 0 -4px 0 rgba(0,0,0,.25);
+}
+
+/* ---------- Ficha da música ---------- */
+.back { justify-self: start; background: none; border: 0; color: var(--muted); font-weight: 700; padding: 4px 0; }
+.detail { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: 28px; align-items: start; }
+.hero { display: grid; gap: 12px; justify-items: start; background: var(--surface); border: 1px solid var(--line); border-radius: 20px; padding: 24px; }
+.hero .mono { width: 120px; height: 120px; font-size: 2.2rem; }
+.hero h2 { font-size: clamp(1.8rem, 4vw, 2.4rem); font-weight: 800; }
+.hero .by { color: var(--muted); }
+.hero .facts { color: var(--muted); font-size: .92rem; }
+.setup { display: grid; gap: 18px; }
+.setup h3 { font-size: .8rem; font-family: var(--font-body); font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.hands { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.hand {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 16px;
+  padding: 14px; display: grid; gap: 10px; justify-items: center; text-align: center;
+}
+.hand svg { width: 46px; height: 46px; }
+.hand .name { font-weight: 700; font-size: .95rem; }
+.hand .sub { color: var(--muted); font-size: .8rem; margin-top: -8px; }
+.seg { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; background: var(--bg); border-radius: 12px; padding: 4px; }
+.seg button { border: 0; background: none; border-radius: 9px; padding: 6px 10px; font-weight: 700; font-size: .85rem; color: var(--muted); }
+.seg button[aria-pressed="true"] { background: var(--surface-2); color: var(--ink); box-shadow: 0 1px 0 rgba(255,255,255,.06) inset; }
+.seg button:disabled { opacity: .35; cursor: not-allowed; }
+.hand.rh svg .palm { fill: var(--rh); }
+.hand.lh svg .palm { fill: var(--lh); }
+.hand.off svg .palm { fill: var(--line); }
+.opt-list { display: grid; gap: 8px; }
+.opt {
+  display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 12px; align-items: center;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; text-align: left;
+}
+.opt[aria-pressed="true"] { border-color: var(--rh); background: #221b17; }
+.opt .dot { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--muted); }
+.opt[aria-pressed="true"] .dot { border-color: var(--rh); background: radial-gradient(circle, var(--rh) 45%, transparent 50%); }
+.opt b { display: block; }
+.opt span { color: var(--muted); font-size: .86rem; }
+.cta {
+  border: 0; border-radius: 16px; padding: 16px 20px;
+  background: linear-gradient(180deg, #ff9a52, var(--rh) 60%, #f0731f);
+  color: #1b0f06; font-family: var(--font-display); font-weight: 800; font-size: 1.25rem;
+  box-shadow: 0 4px 0 var(--rh-deep), 0 10px 24px rgba(255,138,61,.25);
+}
+.cta:active { transform: translateY(2px); box-shadow: 0 2px 0 var(--rh-deep); }
+.note-small { color: var(--muted); font-size: .85rem; margin: -8px 0 0; }
+
+/* ---------- Sessão ---------- */
+.session {
+  position: fixed; inset: 0; z-index: 10; background: var(--bg);
+  display: grid; grid-template-rows: auto auto minmax(0, 1fr);
+  padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+}
+.topbar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 12px;
+  background: var(--surface); border-bottom: 1px solid var(--line);
+}
+.tb-btn {
+  background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px;
+  padding: 6px 10px; font-weight: 700; font-size: .86rem; display: inline-flex; align-items: center; gap: 6px; min-height: 34px;
+}
+.tb-btn[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+.tb-title { font-family: var(--font-display); font-weight: 700; font-size: 1.05rem; margin-right: auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-left: 4px; }
+.tempo { display: inline-flex; align-items: center; gap: 4px; }
+.tempo output { min-width: 4.2ch; text-align: center; font-weight: 700; font-variant-numeric: tabular-nums; font-size: .9rem; }
+.mic {
+  display: inline-flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 999px;
+  background: var(--bg); border: 1px solid var(--line); font-size: .82rem; font-weight: 700; color: var(--muted);
+}
+.mic .bars { width: 34px; height: 8px; border-radius: 4px; background: var(--line); overflow: hidden; }
+.mic .bars i { display: block; height: 100%; width: 0%; background: var(--hit); transition: width .05s; }
+.mic.on { color: var(--hit); }
+.progress { height: 4px; background: var(--line); }
+.progress i { display: block; height: 100%; width: 0; background: var(--rh); }
+.stage { position: relative; min-height: 0; }
+#stage { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; display: block; }
+.toast {
+  position: absolute; left: 50%; top: 14px; transform: translateX(-50%);
+  background: rgba(23,26,35,.92); border: 1px solid var(--line); border-radius: 12px;
+  padding: 8px 14px; font-size: .9rem; font-weight: 600; max-width: min(92%, 560px); text-align: center;
+  pointer-events: none;
+}
+.result {
+  position: absolute; inset: 0; display: grid; place-items: center; background: rgba(13,15,21,.82); padding: 16px;
+}
+.result-card {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 22px; padding: 26px;
+  display: grid; gap: 14px; justify-items: center; text-align: center; width: min(100%, 380px);
+}
+.stars { font-size: 2.4rem; letter-spacing: 6px; color: var(--line); line-height: 1; }
+.stars .on { color: #ffc94d; }
+.result-card h2 { font-size: 1.8rem; font-weight: 800; }
+.result-card p { margin: 0; color: var(--muted); }
+.score { font-family: var(--font-display); font-size: 3rem; font-weight: 800; line-height: 1; color: var(--ink); font-variant-numeric: tabular-nums; }
+.result-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.result-actions .cta { font-size: 1.05rem; padding: 12px 18px; }
+
+@media (max-width: 760px) {
+  .detail { grid-template-columns: 1fr; }
+  .hero { grid-template-columns: auto minmax(0, 1fr); align-items: center; }
+  .hero .mono { width: 76px; height: 76px; font-size: 1.5rem; grid-row: span 3; }
+  .hero .facts { grid-column: 1 / -1; }
+}
+@media (max-width: 420px) { .hands { grid-template-columns: 1fr; } }
+@media (max-height: 460px) {
+  .topbar { padding: 4px 8px; gap: 6px; }
+  .tb-btn { min-height: 30px; padding: 4px 8px; }
+}
+@media (prefers-reduced-motion: reduce) { .card { transition: none; } .card:hover { transform: none; } }
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="hand" viewBox="0 0 48 48">
+    <g class="palm">
+      <rect x="13" y="6" width="5" height="20" rx="2.5"/>
+      <rect x="19.5" y="3" width="5" height="22" rx="2.5"/>
+      <rect x="26" y="4.5" width="5" height="21" rx="2.5"/>
+      <rect x="32.5" y="9" width="5" height="17" rx="2.5"/>
+      <rect x="4" y="22" width="5" height="14" rx="2.5" transform="rotate(-35 6.5 29)"/>
+      <path d="M11 22h27v9c0 8-6 14-13.5 14S11 39 11 31z"/>
+    </g>
+  </symbol>
+</svg>
+
+<main id="library" class="screen">
+  <div class="lib-head">
+    <span class="eyebrow">Teclado Numerado</span>
+    <h1>O que vamos tocar hoje?</h1>
+    <p>Deite o celular na estante do teclado. As notas caem até a tecla certa e o app escuta pelo microfone o que você toca. O número em cada bloco é o mesmo que está escrito na sua tecla.</p>
+  </div>
+  <div class="filters" id="filters"></div>
+  <div class="grid" id="grid"></div>
+</main>
+
+<main id="detail" class="screen" hidden>
+  <button class="back" id="detailBack">‹ Músicas</button>
+  <div class="detail">
+    <div class="hero">
+      <div class="mono" id="dMono"></div>
+      <h2 id="dTitle"></h2>
+      <div class="by" id="dBy"></div>
+      <div class="meta-row" id="dMeta"></div>
+      <div class="facts" id="dFacts"></div>
+    </div>
+    <div class="setup">
+      <h3>Mãos</h3>
+      <div class="hands">
+        <div class="hand lh" id="lhCard">
+          <svg aria-hidden="true" style="transform: scaleX(-1)"><use href="#hand"/></svg>
+          <div class="name">Mão esquerda</div>
+          <div class="sub" id="lhSub">Baixo</div>
+          <div class="seg" id="lhSeg" role="group" aria-label="Mão esquerda">
+            <button data-v="user">Eu toco</button>
+            <button data-v="app">App toca</button>
+            <button data-v="off">Desligada</button>
+          </div>
+        </div>
+        <div class="hand rh" id="rhCard">
+          <svg aria-hidden="true"><use href="#hand"/></svg>
+          <div class="name">Mão direita</div>
+          <div class="sub">Melodia</div>
+          <div class="seg" id="rhSeg" role="group" aria-label="Mão direita">
+            <button data-v="user">Eu toco</button>
+            <button data-v="app">App toca</button>
+          </div>
+        </div>
+      </div>
+      <h3>Ritmo</h3>
+      <div class="opt-list" id="modeList">
+        <button class="opt" data-v="wait"><i class="dot"></i><div><b>Esperar por mim</b><span>As notas param na linha até você acertar a tecla.</span></div></button>
+        <button class="opt" data-v="flow"><i class="dot"></i><div><b>No ritmo da música</b><span>As notas não param. Ajuste a velocidade na sessão.</span></div></button>
+      </div>
+      <h3>Onde você vai tocar</h3>
+      <div class="opt-list" id="inputList">
+        <button class="opt" data-v="mic"><i class="dot"></i><div><b>No meu teclado</b><span>O app ouve pelo microfone do celular.</span></div></button>
+        <button class="opt" data-v="screen"><i class="dot"></i><div><b>Na tela</b><span>Toque nas teclas desenhadas ou use o teclado do computador.</span></div></button>
+      </div>
+      <button class="cta" id="startBtn">Começar sessão</button>
+      <p class="note-small" id="startNote"></p>
+    </div>
+  </div>
+</main>
+
+<section class="session" id="session" hidden aria-label="Sessão">
+  <div class="topbar">
+    <button class="tb-btn" id="sBack" aria-label="Voltar para a música">‹</button>
+    <div class="tb-title" id="sTitle"></div>
+    <button class="tb-btn" id="sPause">Pausar</button>
+    <button class="tb-btn" id="sRestart">Do início</button>
+    <button class="tb-btn" id="sDemo" aria-pressed="false">Ouvir</button>
+    <div class="tempo">
+      <button class="tb-btn" id="tDown" aria-label="Mais devagar">−</button>
+      <output id="tVal">100%</output>
+      <button class="tb-btn" id="tUp" aria-label="Mais rápido">+</button>
+    </div>
+    <div class="mic" id="micPill"><span id="micText">Tela</span><span class="bars"><i id="micLevel"></i></span></div>
+  </div>
+  <div class="progress"><i id="prog"></i></div>
+  <div class="stage">
+    <canvas id="stage"></canvas>
+    <div class="toast" id="toast" hidden></div>
+    <div class="result" id="result" hidden>
+      <div class="result-card">
+        <div class="stars" id="rStars"></div>
+        <h2 id="rTitle">Mandou bem!</h2>
+        <div class="score" id="rScore">0%</div>
+        <p id="rText"></p>
+        <div class="result-actions">
+          <button class="cta" id="rAgain">Tocar de novo</button>
+          <button class="tb-btn" id="rSongs">Outras músicas</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+(() => {
+  "use strict";
+  const $ = (id) => document.getElementById(id);
+
+  // ---------- Teoria ----------
+  const BLACK_PC = new Set([1, 3, 6, 8, 10]);
+  const LETTER_PC = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+  const NAMES = ["Dó", "Dó♯", "Ré", "Ré♯", "Mi", "Fá", "Fá♯", "Sol", "Sol♯", "Lá", "Lá♯", "Si"];
+  const isBlack = (m) => BLACK_PC.has(m % 12);
+  // índice global de tecla branca (Dó2 = 0) — o número escrito na tecla é esse + 1
+  const whiteIdx = (m) => {
+    const pc = m % 12, oct = Math.floor(m / 12) - 1;
+    const nat = isBlack(m) ? pc - 1 : pc;
+    return (oct - 2) * 7 + [0, 2, 4, 5, 7, 9, 11].indexOf(nat);
+  };
+  const keyNum = (m) => (whiteIdx(m) + 1) + (isBlack(m) ? "♯" : "");
+
+  // ---------- Músicas ----------
+  const SONGS = [
+    { id: "parabens", title: "Parabéns pra você", by: "Tradicional", tag: "Infantil", level: 1, tempo: 100, mono: "PB", c: ["#ff8a3d", "#e8487a"],
+      rh: "G3:.75 G3:.25 A3 G3 C4 B3:2 G3:.75 G3:.25 A3 G3 D4 C4:2 G3:.75 G3:.25 G4 E4 C4 B3 A3:2 F4:.75 F4:.25 E4 C4 D4 C4:2" },
+    { id: "brilha", title: "Brilha, brilha, estrelinha", by: "Canção francesa", tag: "Infantil", level: 1, tempo: 96, mono: "BB", c: ["#4f7bff", "#8f7cff"],
+      rh: "C4 C4 G4 G4 A4 A4 G4:2 F4 F4 E4 E4 D4 D4 C4:2 G4 G4 F4 F4 E4 E4 D4:2 G4 G4 F4 F4 E4 E4 D4:2 C4 C4 G4 G4 A4 A4 G4:2 F4 F4 E4 E4 D4 D4 C4:2",
+      lh: "C3:4 F3:2 C3:2 F3:2 C3:2 G3:2 C3:2 C3:2 G2:2 C3:2 G2:2 C3:2 G2:2 C3:2 G2:2 C3:4 F3:2 C3:2 F3:2 C3:2 G3:2 C3:2" },
+    { id: "mary", title: "Mary had a little lamb", by: "Cantiga americana", tag: "Infantil", level: 1, tempo: 110, mono: "ML", c: ["#2bb673", "#3fd8ea"],
+      rh: "E4 D4 C4 D4 E4 E4 E4:2 D4 D4 D4:2 E4 G4 G4:2 E4 D4 C4 D4 E4 E4 E4 E4 D4 D4 E4 D4 C4:4",
+      lh: "C3:4 C3:4 G2:4 C3:4 C3:4 C3:4 G2:4 C3:4" },
+    { id: "jacques", title: "Frère Jacques", by: "Cânone francês", tag: "Infantil", level: 1, tempo: 108, mono: "FJ", c: ["#f2b632", "#ff8a3d"],
+      rh: "C4 D4 E4 C4 C4 D4 E4 C4 E4 F4 G4:2 E4 F4 G4:2 G4:.5 A4:.5 G4:.5 F4:.5 E4 C4 G4:.5 A4:.5 G4:.5 F4:.5 E4 C4 C4 G3 C4:2 C4 G3 C4:2",
+      lh: "C3:4 C3:4 C3:4 C3:4 C3:4 C3:4 C3:4 C3:4" },
+    { id: "ode", title: "Ode à Alegria", by: "Ludwig van Beethoven", tag: "Clássica", level: 2, tempo: 108, mono: "LvB", c: ["#c0392b", "#6b1f1a"],
+      rh: "E4 E4 F4 G4 G4 F4 E4 D4 C4 C4 D4 E4 E4:1.5 D4:.5 D4:2 E4 E4 F4 G4 G4 F4 E4 D4 C4 C4 D4 E4 D4:1.5 C4:.5 C4:2 D4 D4 E4 C4 D4 E4:.5 F4:.5 E4 C4 D4 E4:.5 F4:.5 E4 D4 C4 D4 G3:2 E4 E4 F4 G4 G4 F4 E4 D4 C4 C4 D4 E4 D4:1.5 C4:.5 C4:2",
+      lh: "C3:4 G2:4 C3:4 G2:4 C3:4 G2:4 C3:4 G2:2 C3:2 G2:4 G2:2 C3:2 G2:2 C3:2 C3:2 G2:2 C3:4 G2:4 C3:4 G2:2 C3:2" },
+    { id: "jingle", title: "Jingle Bells", by: "James Lord Pierpont", tag: "Natal", level: 2, tempo: 126, mono: "JB", c: ["#1f9d55", "#c0392b"],
+      rh: "E4 E4 E4:2 E4 E4 E4:2 E4 G4 C4:1.5 D4:.5 E4:4 F4 F4 F4:1.5 F4:.5 F4 E4 E4 E4:.5 E4:.5 E4 D4 D4 E4 D4:2 G4:2 E4 E4 E4:2 E4 E4 E4:2 E4 G4 C4:1.5 D4:.5 E4:4 F4 F4 F4:1.5 F4:.5 F4 E4 E4 E4:.5 E4:.5 G4 G4 F4 D4 C4:4" },
+    { id: "noite", title: "Noite Feliz", by: "Franz Gruber", tag: "Natal", level: 2, tempo: 88, mono: "FG", c: ["#3b5bdb", "#1b2a6b"],
+      rh: "G4:1.5 A4:.5 G4 E4:3 G4:1.5 A4:.5 G4 E4:3 D5:2 D5 B4:3 C5:2 C5 G4:3 A4:2 A4 C5:1.5 B4:.5 A4 G4:1.5 A4:.5 G4 E4:3 A4:2 A4 C5:1.5 B4:.5 A4 G4:1.5 A4:.5 G4 E4:3 D5:2 D5 F5:1.5 D5:.5 B4 C5:3 E5:3 C5 G4 E4 G4:1.5 F4:.5 D4 C4:3" },
+    { id: "elise", title: "Para Elisa", by: "Ludwig van Beethoven", tag: "Clássica", level: 3, tempo: 72, mono: "LvB", c: ["#7a4bd6", "#2b1a52"],
+      rh: "E5:.5 D#5:.5 E5:.5 D#5:.5 E5:.5 B4:.5 D5:.5 C5:.5 A4:1.5 C4:.5 E4:.5 A4:.5 B4:1.5 E4:.5 G#4:.5 B4:.5 C5:1.5 E4:.5 E5:.5 D#5:.5 E5:.5 D#5:.5 E5:.5 B4:.5 D5:.5 C5:.5 A4:1.5 C4:.5 E4:.5 A4:.5 B4:1.5 E4:.5 C5:.5 B4:.5 A4:3" },
+  ];
+
+  function parseSeq(str, hand) {
+    let t = 0;
+    return str.trim().split(/\s+/).map((tok) => {
+      const [n, d] = tok.split(":");
+      const m = /^([A-G])(#?)(\d)$/.exec(n);
+      const midi = 12 * (Number(m[3]) + 1) + LETTER_PC[m[1]] + (m[2] ? 1 : 0);
+      const dur = d ? Number(d) : 1;
+      const note = { t, d: dur, midi, hand };
+      t += dur;
+      return note;
+    });
+  }
+  // Dedilhado simples: a mão fica numa posição de 5 dedos e só se desloca quando precisa.
+  function finger(notes, hand) {
+    let base = null;
+    notes.forEach((n) => {
+      const w = whiteIdx(n.midi);
+      if (base === null) base = hand === "rh" ? w : w - 4;
+      if (w < base) base = w;
+      else if (w > base + 4) base = w - 4;
+      n.finger = hand === "rh" ? w - base + 1 : base + 4 - w + 1;
+    });
+  }
+  SONGS.forEach((s) => {
+    s.rhNotes = parseSeq(s.rh, "rh"); finger(s.rhNotes, "rh");
+    s.lhNotes = s.lh ? parseSeq(s.lh, "lh") : []; finger(s.lhNotes, "lh");
+    const last = s.rhNotes[s.rhNotes.length - 1];
+    s.beats = last.t + last.d;
+  });
+
+  // ---------- Áudio ----------
+  let ctx = null, master = null, pianoWave = null;
+  function ensureAudio() {
+    if (!ctx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return false;
+      ctx = new AC();
+      const comp = ctx.createDynamicsCompressor();
+      comp.threshold.value = -14; comp.ratio.value = 4;
+      master = ctx.createGain(); master.gain.value = .8;
+      master.connect(comp); comp.connect(ctx.destination);
+      const amps = [1, .55, .32, .2, .12, .08, .05, .03];
+      const real = new Float32Array(amps.length + 1), imag = new Float32Array(amps.length + 1);
+      amps.forEach((a, i) => (imag[i + 1] = a));
+      pianoWave = ctx.createPeriodicWave(real, imag);
+    }
+    if (ctx.state === "suspended") ctx.resume();
+    return true;
+  }
+  const freq = (m) => 440 * Math.pow(2, (m - 69) / 12);
+  function playTone(m, seconds = .6, level = 1) {
+    if (!ensureAudio()) return;
+    const t = ctx.currentTime, f = freq(m);
+    const out = ctx.createGain(), filter = ctx.createBiquadFilter();
+    filter.type = "lowpass";
+    filter.frequency.setValueAtTime(Math.min(16000, f * 10), t);
+    filter.frequency.setTargetAtTime(Math.min(12000, f * 2.5), t + .02, .35);
+    filter.connect(out); out.connect(master);
+    const decay = Math.min(3, Math.max(.6, 2.4 * Math.sqrt(261 / f)));
+    out.gain.setValueAtTime(0, t);
+    out.gain.linearRampToValueAtTime(.26 * level, t + .004);
+    out.gain.setTargetAtTime(.12 * level, t + .004, .12);
+    out.gain.setTargetAtTime(0, t + .3, decay);
+    const end = t + Math.max(.25, seconds);
+    out.gain.setTargetAtTime(0, end, .12);
+    [0, 3].forEach((det) => {
+      const o = ctx.createOscillator();
+      o.setPeriodicWave(pianoWave); o.frequency.value = f; o.detune.value = det;
+      o.connect(filter); o.start(t); o.stop(end + 1);
+    });
+    setTimeout(() => out.disconnect(), (end - t + 1.2) * 1000);
+  }
+
+  // ---------- Microfone (detecção de altura, método YIN) ----------
+  const mic = { on: false, analyser: null, buf: null, stream: null, lastMidi: null, stable: 0, armed: true, peak: 0, trough: 1, lastEvent: null, frame: 0 };
+  async function startMic() {
+    if (mic.on) return true;
+    try {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return false;
+      ensureAudio();
+      mic.stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
+      const src = ctx.createMediaStreamSource(mic.stream);
+      mic.analyser = ctx.createAnalyser(); mic.analyser.fftSize = 2048;
+      src.connect(mic.analyser);
+      mic.buf = new Float32Array(mic.analyser.fftSize);
+      mic.yin = new Float32Array(mic.analyser.fftSize / 2 + 2);
+      mic.on = true;
+      return true;
+    } catch (e) { return false; }
+  }
+  function detectPitch() {
+    mic.analyser.getFloatTimeDomainData(mic.buf);
+    return yinPitch(mic.buf, ctx.sampleRate, mic.yin);
+  }
+  //@yin-start
+  function yinPitch(buf, sr, d) {
+    const N = buf.length;
+    let rms = 0;
+    for (let i = 0; i < N; i++) rms += buf[i] * buf[i];
+    rms = Math.sqrt(rms / N);
+    if (rms < .01) return { rms, midi: null };
+    const minLag = Math.floor(sr / 2200), maxLag = Math.min(Math.floor(sr / 60), Math.floor(N / 2));
+    const W = N - maxLag;
+    let running = 0;
+    d[0] = 1;
+    for (let lag = 1; lag <= maxLag; lag++) {
+      let s = 0;
+      for (let j = 0; j < W; j++) { const x = buf[j] - buf[j + lag]; s += x * x; }
+      running += s;
+      d[lag] = running ? (s * lag) / running : 1;
+    }
+    let tau = -1;
+    for (let lag = minLag; lag <= maxLag; lag++) {
+      if (d[lag] < .15) {
+        while (lag + 1 <= maxLag && d[lag + 1] < d[lag]) lag++;
+        tau = lag; break;
+      }
+    }
+    if (tau < 0) return { rms, midi: null };
+    let better = tau;
+    if (tau > 1 && tau < maxLag) {
+      const a = d[tau - 1], b = d[tau], c = d[tau + 1];
+      const den = a + c - 2 * b;
+      if (den) better = tau + (a - c) / (2 * den);
+    }
+    const midiF = 69 + 12 * Math.log2(sr / better / 440);
+    const midi = Math.round(midiF);
+    if (Math.abs(midiF - midi) > .42) return { rms, midi: null };
+    return { rms, midi };
+  }
+  //@yin-end
+  function micTick() {
+    if (!mic.on || !session.active) return;
+    if (++mic.frame % 2) return;
+    const { rms, midi } = detectPitch();
+    $("micLevel").style.width = Math.min(100, rms * 900) + "%";
+    // reconhece um novo ataque mesmo quando a nota se repete (Dó, Dó...)
+    if (!mic.armed) {
+      mic.peak = Math.max(mic.peak, rms);
+      if (rms < mic.peak * .55) { mic.armed = true; mic.trough = rms; }
+    } else {
+      mic.trough = Math.min(mic.trough, rms);
+    }
+    if (midi == null) { mic.stable = 0; mic.lastMidi = null; if (rms < .01) mic.lastEvent = null; return; }
+    mic.stable = midi === mic.lastMidi ? mic.stable + 1 : 1;
+    mic.lastMidi = midi;
+    if (mic.stable < 2) return;
+    const fresh = midi !== mic.lastEvent || (mic.armed && rms > mic.trough * 1.4);
+    if (!fresh) return;
+    mic.lastEvent = midi; mic.armed = false; mic.peak = rms;
+    onInput(midi, "mic");
+  }
+
+  // ---------- Estado ----------
+  const prefs = { lh: "off", rh: "user", mode: "wait", input: "mic" };
+  try { Object.assign(prefs, JSON.parse(localStorage.getItem("tn-prefs") || "{}")); } catch (e) {}
+  const savePrefs = () => { try { localStorage.setItem("tn-prefs", JSON.stringify(prefs)); } catch (e) {} };
+
+  let current = SONGS[0];
+  const session = { active: false, notes: [], pos: 0, paused: false, tempo: 1, demo: false, lo: 48, hi: 72, hits: 0, wrong: 0, missed: 0, total: 0, done: false };
+  const lights = new Map(); // midi -> {until, color}
+
+  // ---------- Biblioteca ----------
+  let filter = "Todas";
+  function renderLibrary() {
+    const tags = ["Todas", ...new Set(SONGS.map((s) => s.tag))];
+    $("filters").innerHTML = "";
+    tags.forEach((t) => {
+      const b = document.createElement("button");
+      b.className = "pill"; b.textContent = t; b.setAttribute("aria-pressed", String(t === filter));
+      b.onclick = () => { filter = t; renderLibrary(); };
+      $("filters").appendChild(b);
+    });
+    $("grid").innerHTML = "";
+    SONGS.filter((s) => filter === "Todas" || s.tag === filter).forEach((s) => {
+      const b = document.createElement("button");
+      b.className = "card";
+      b.innerHTML = `${monoHTML(s)}<div><h3></h3><div class="by"></div><div class="meta-row"><span class="tag"></span>${levelHTML(s.level)}</div></div>`;
+      b.querySelector("h3").textContent = s.title;
+      b.querySelector(".by").textContent = s.by;
+      b.querySelector(".tag").textContent = s.tag;
+      b.onclick = () => openDetail(s);
+      $("grid").appendChild(b);
+    });
+  }
+  const monoHTML = (s) => `<div class="mono" style="background:linear-gradient(140deg,${s.c[0]},${s.c[1]})">${s.mono}</div>`;
+  const levelHTML = (n) => `<span class="level" aria-label="Nível ${n} de 3">${[1, 2, 3].map((i) => `<i class="${i <= n ? "on" : ""}"></i>`).join("")}</span>`;
+
+  // ---------- Ficha ----------
+  function show(id) {
+    ["library", "detail", "session"].forEach((x) => ($(x).hidden = x !== id));
+    window.scrollTo(0, 0);
+  }
+  function openDetail(s) {
+    current = s;
+    const mono = $("dMono");
+    mono.textContent = s.mono;
+    mono.style.background = `linear-gradient(140deg,${s.c[0]},${s.c[1]})`;
+    $("dTitle").textContent = s.title;
+    $("dBy").textContent = s.by;
+    $("dMeta").innerHTML = `<span class="tag">${s.tag}</span>${levelHTML(s.level)}`;
+    const nums = s.rhNotes.concat(s.lhNotes).map((n) => whiteIdx(n.midi) + 1);
+    $("dFacts").textContent = `${s.rhNotes.length + s.lhNotes.length} notas · teclas ${Math.min(...nums)} a ${Math.max(...nums)} · ${s.lh ? "duas mãos" : "só mão direita"}`;
+    renderSetup();
+    show("detail");
+  }
+  function setPressed(groupEl, v) {
+    [...groupEl.querySelectorAll("[data-v]")].forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.v === v)));
+  }
+  function renderSetup() {
+    const hasLH = !!current.lh;
+    [...$("lhSeg").children].forEach((b) => (b.disabled = !hasLH && b.dataset.v !== "off"));
+    const lh = hasLH ? prefs.lh : "off";
+    setPressed($("lhSeg"), lh);
+    $("lhSub").textContent = hasLH ? "Baixo" : "Não tem nesta música";
+    $("lhCard").classList.toggle("off", lh === "off");
+    setPressed($("rhSeg"), prefs.rh);
+    setPressed($("modeList"), prefs.mode);
+    setPressed($("inputList"), prefs.input);
+    const nobody = prefs.rh !== "user" && lh !== "user";
+    $("startBtn").textContent = nobody ? "Ouvir a música" : "Começar sessão";
+    $("startNote").textContent = prefs.input === "mic"
+      ? "Deixe o volume do seu teclado num nível normal e o celular perto dos alto-falantes dele."
+      : "Dica: deite o celular para ver mais teclas.";
+  }
+  $("lhSeg").addEventListener("click", (e) => { const b = e.target.closest("[data-v]"); if (b && !b.disabled) { prefs.lh = b.dataset.v; savePrefs(); renderSetup(); } });
+  $("rhSeg").addEventListener("click", (e) => { const b = e.target.closest("[data-v]"); if (b) { prefs.rh = b.dataset.v; savePrefs(); renderSetup(); } });
+  $("modeList").addEventListener("click", (e) => { const b = e.target.closest("[data-v]"); if (b) { prefs.mode = b.dataset.v; savePrefs(); renderSetup(); } });
+  $("inputList").addEventListener("click", (e) => { const b = e.target.closest("[data-v]"); if (b) { prefs.input = b.dataset.v; savePrefs(); renderSetup(); } });
+  $("detailBack").onclick = () => show("library");
+
+  $("startBtn").onclick = async () => {
+    ensureAudio();
+    show("session");
+    let note = "";
+    if (prefs.input === "mic") {
+      const ok = await startMic();
+      if (!ok) note = "O microfone não está disponível nesta página. Toque nas teclas da tela ou use o teclado do computador.";
+    }
+    setMicPill();
+    startSession();
+    if (note) toast(note, 6000);
+    else if (mic.on && prefs.input === "mic") toast("Ouvindo. Toque a tecla do bloco quando ele chegar na linha.", 3500);
+  };
+
+  // ---------- Sessão ----------
+  function startSession() {
+    const s = current;
+    const lh = s.lh ? prefs.lh : "off";
+    const notes = [];
+    s.rhNotes.forEach((n) => notes.push({ ...n, who: prefs.rh }));
+    if (lh !== "off") s.lhNotes.forEach((n) => notes.push({ ...n, who: lh }));
+    notes.sort((a, b) => a.t - b.t || a.midi - b.midi);
+    notes.forEach((n) => { n.hit = false; n.missed = false; n.played = false; n.flash = 0; });
+    const all = notes.map((n) => n.midi);
+    let lo = Math.min(...all), hi = Math.max(...all);
+    lo = lo - (lo % 12);                         // começa num Dó
+    hi = hi + (11 - (hi % 12));                  // termina num Si
+    if (hi - lo < 23) hi = lo + 23;              // pelo menos duas oitavas
+    Object.assign(session, {
+      active: true, notes, pos: -3.5, paused: false, done: false, lo, hi,
+      hits: 0, wrong: 0, missed: 0, total: notes.filter((n) => n.who === "user").length,
+    });
+    session.demo = session.total === 0;
+    $("sDemo").setAttribute("aria-pressed", String(session.demo));
+    $("sPause").textContent = "Pausar";
+    $("sTitle").textContent = s.title;
+    $("tVal").textContent = Math.round(session.tempo * 100) + "%";
+    $("result").hidden = true;
+    const firstUser = notes.find((n) => n.who === "user");
+    kbBase = firstUser ? Math.max(lo, firstUser.midi - (firstUser.midi % 12)) : lo;
+    lights.clear();
+    resize();
+    lastFrame = performance.now();
+  }
+  function leaveSession() {
+    session.active = false;
+    show("detail");
+  }
+  const userNote = (n) => n.who === "user" && !session.demo;
+  function setMicPill() {
+    const on = mic.on && prefs.input === "mic";
+    $("micPill").classList.toggle("on", on);
+    $("micText").textContent = on ? "Ouvindo" : "Tela";
+    $("micPill").querySelector(".bars").hidden = !on;
+  }
+
+  function update(dt) {
+    if (!session.active || session.paused || session.done) return;
+    const bps = (current.tempo / 60) * session.tempo;
+    let next = session.pos + dt * bps;
+    const waiting = prefs.mode === "wait";
+    if (waiting) {
+      const pending = session.notes.find((n) => userNote(n) && !n.hit);
+      if (pending && next >= pending.t) next = pending.t;
+    }
+    session.pos = next;
+    for (const n of session.notes) {
+      if (n.t > session.pos + .001) break;
+      if (!userNote(n)) {
+        // o app toca a nota, mas no modo "esperar" só depois que você acertou as notas do mesmo tempo
+        if (!n.played && !(waiting && session.notes.some((u) => userNote(u) && !u.hit && u.t <= n.t))) {
+          n.played = true;
+          const secs = (n.d / bps) * .92;
+          playTone(n.midi, secs, n.who === "app" && mic.on ? .7 : 1);
+          lights.set(n.midi, { until: performance.now() + secs * 1000, color: n.hand === "lh" ? "lh" : "rh" });
+          if (session.demo) n.hit = true;
+        }
+      } else if (!waiting && !n.hit && !n.missed && session.pos > n.t + .5) {
+        n.missed = true; session.missed++;
+      }
+    }
+    $("prog").style.width = Math.max(0, Math.min(100, (session.pos / current.beats) * 100)) + "%";
+    if (session.pos >= current.beats + .8) finish();
+  }
+
+  function onInput(midi, source) {
+    if (source !== "mic") playTone(midi, .5);
+    lights.set(midi, { until: performance.now() + 260, color: "hit" });
+    if (!session.active || session.paused || session.done || session.demo) return;
+    let cands;
+    if (prefs.mode === "wait") {
+      // no modo "esperar" vale tocar a próxima nota mesmo antes de o bloco chegar
+      const first = session.notes.find((n) => userNote(n) && !n.hit);
+      cands = first ? session.notes.filter((n) => userNote(n) && !n.hit && n.t === first.t) : [];
+    } else {
+      cands = session.notes.filter((n) => userNote(n) && !n.hit && !n.missed && Math.abs(n.t - session.pos) <= .45);
+    }
+    if (!cands.length) return;
+    let match = cands.find((n) => n.midi === midi);
+    if (!match && source === "mic") {
+      // o microfone às vezes erra a oitava; aceita a mesma nota uma oitava acima ou abaixo
+      match = cands.find((n) => Math.abs(n.midi - midi) === 12 && !isSoundingFromApp(midi));
+    }
+    if (match) {
+      match.hit = true; match.flash = performance.now();
+      session.hits++;
+    } else {
+      session.wrong++;
+      lights.set(midi, { until: performance.now() + 320, color: "bad" });
+    }
+  }
+  const isSoundingFromApp = (m) => { const l = lights.get(m); return l && l.color !== "hit" && l.color !== "bad" && l.until > performance.now(); };
+
+  function finish() {
+    session.done = true;
+    if (session.demo || session.total === 0) {
+      $("rStars").innerHTML = "";
+      $("rTitle").textContent = "Agora é sua vez";
+      $("rScore").textContent = "♪";
+      $("rText").textContent = "Desligue o botão Ouvir e toque junto com as notas.";
+    } else {
+      const score = Math.round((session.hits / (session.total + session.wrong * .5)) * 100);
+      const stars = score >= 90 ? 3 : score >= 70 ? 2 : score >= 40 ? 1 : 0;
+      $("rStars").innerHTML = [1, 2, 3].map((i) => `<span class="${i <= stars ? "on" : ""}">★</span>`).join("");
+      $("rTitle").textContent = stars === 3 ? "Perfeito!" : stars === 2 ? "Mandou bem!" : "Continue praticando";
+      $("rScore").textContent = score + "%";
+      $("rText").textContent = `${session.hits} de ${session.total} notas certas · ${session.wrong} toques errados${session.missed ? ` · ${session.missed} passaram` : ""}`;
+    }
+    $("result").hidden = false;
+  }
+
+  // ---------- Desenho ----------
+  const cv = $("stage"), g = cv.getContext("2d");
+  let W = 0, H = 0, dpr = 1, layout = null;
+  function resize() {
+    const r = cv.getBoundingClientRect();
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    W = r.width; H = r.height;
+    cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+    const whites = [];
+    for (let m = session.lo; m <= session.hi; m++) if (!isBlack(m)) whites.push(m);
+    const ww = W / whites.length;
+    const kbH = Math.max(70, Math.min(170, H * .3, ww * 5.2));
+    layout = { whites, ww, bw: ww * .6, kbH, hitY: H - kbH, w0: whiteIdx(session.lo) };
+  }
+  window.addEventListener("resize", () => { if (session.active) resize(); });
+  function keyX(m) {
+    const L = layout, wi = whiteIdx(m) - L.w0;
+    return isBlack(m) ? (wi + 1) * L.ww - L.bw / 2 : wi * L.ww;
+  }
+  function keyW(m) { return isBlack(m) ? layout.bw : layout.ww; }
+  function rr(x, y, w, h, r) {
+    r = Math.min(r, w / 2, h / 2);
+    g.beginPath();
+    g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r);
+    g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath();
+  }
+  const COL = {
+    rh: ["#ff9a52", "#e8691f"], lh: ["#a493ff", "#6b57e8"], app: ["#3a4152", "#2b3140"],
+  };
+  function draw(now) {
+    if (!layout) return;
+    const L = layout;
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    g.clearRect(0, 0, W, H);
+    // pista
+    const bg = g.createLinearGradient(0, 0, 0, L.hitY);
+    bg.addColorStop(0, "#0d0f15"); bg.addColorStop(1, "#151926");
+    g.fillStyle = bg; g.fillRect(0, 0, W, L.hitY);
+    L.whites.forEach((m, i) => {
+      if (m % 12 === 0 || m % 12 === 5) {
+        g.fillStyle = m % 12 === 0 ? "rgba(255,255,255,.09)" : "rgba(255,255,255,.04)";
+        g.fillRect(Math.round(i * L.ww), 0, 1, L.hitY);
+      }
+    });
+    // blocos que caem
+    const ppb = L.hitY / 4.2;
+    const pos = session.pos;
+    g.save();
+    g.beginPath(); g.rect(0, 0, W, L.hitY + 2); g.clip();
+    for (const n of session.notes) {
+      const yb = L.hitY - (n.t - pos) * ppb;
+      const h = Math.max(n.d * ppb - 4, 16);
+      const y = yb - h;
+      if (y > L.hitY + 2 || yb < -10) continue;
+      if (n.hit && !session.demo && yb > L.hitY + 2 && now - n.flash > 300) continue;
+      const pad = isBlack(n.midi) ? 1 : 3;
+      const x = keyX(n.midi) + pad, w = keyW(n.midi) - pad * 2;
+      const user = userNote(n);
+      const pal = user || session.demo ? COL[n.hand] : COL.app;
+      let alpha = 1;
+      if (n.hit && user) alpha = Math.max(.15, 1 - (now - n.flash) / 300);
+      if (n.missed) alpha = .3;
+      g.globalAlpha = alpha;
+      const grd = g.createLinearGradient(0, y, 0, yb);
+      grd.addColorStop(0, pal[0]); grd.addColorStop(1, pal[1]);
+      g.fillStyle = grd;
+      rr(x, y, w, h, Math.min(8, w / 3)); g.fill();
+      if (n.hit && user) { g.strokeStyle = "#4ade80"; g.lineWidth = 2; g.stroke(); }
+      // número da tecla + dedo
+      if (w >= 14) {
+        const fs = Math.max(10, Math.min(18, w * .5));
+        g.fillStyle = user || session.demo ? "#1b0f06" : "#c9cfdd";
+        if (n.hand === "lh" && (user || session.demo)) g.fillStyle = "#fff";
+        g.textAlign = "center"; g.textBaseline = "alphabetic";
+        g.font = `800 ${fs}px "Baloo 2", system-ui, sans-serif`;
+        const cx = x + w / 2;
+        if (h >= fs * 2.4) {
+          g.fillText(keyNum(n.midi), cx, yb - fs * 1.15);
+          g.font = `700 ${Math.max(9, fs * .62)}px "Nunito Sans", system-ui, sans-serif`;
+          g.globalAlpha = alpha * .8;
+          g.fillText(w >= 44 ? "dedo " + n.finger : String(n.finger), cx, yb - fs * .3);
+        } else {
+          g.fillText(keyNum(n.midi), cx, yb - Math.max(3, (h - fs * .75) / 2));
+        }
+      }
+      g.globalAlpha = 1;
+    }
+    g.restore();
+    // linha de acerto
+    g.fillStyle = "rgba(63,216,234,.25)"; g.fillRect(0, L.hitY - 3, W, 3);
+    g.fillStyle = "#3fd8ea"; g.fillRect(0, L.hitY - 1, W, 1.5);
+
+    // teclado
+    const ky = L.hitY, kh = L.kbH, bh = kh * .62;
+    const waitingNotes = prefs.mode === "wait" && !session.demo
+      ? session.notes.filter((n) => userNote(n) && !n.hit && Math.abs(n.t - pos) < .02) : [];
+    const want = new Map(waitingNotes.map((n) => [n.midi, n.hand]));
+    const lightOf = (m) => { const l = lights.get(m); return l && l.until > now ? l.color : null; };
+    const fillFor = (c) => c === "hit" ? "#3fd8ea" : c === "bad" ? "#ff5d5d" : c === "lh" ? "#a493ff" : c === "rh" ? "#ff9a52" : null;
+    L.whites.forEach((m, i) => {
+      const x = i * L.ww;
+      const lit = fillFor(lightOf(m));
+      g.fillStyle = lit || (want.has(m) ? (want.get(m) === "lh" ? "#d9d2ff" : "#ffd9bd") : "#f4f2ec");
+      rr(x + .5, ky, L.ww - 1, kh - 1, 5); g.fill();
+      g.fillStyle = "rgba(0,0,0,.12)"; g.fillRect(x + .5, ky, L.ww - 1, 4);
+      // número escrito na tecla, como no seu teclado
+      const fs = Math.max(9, Math.min(15, L.ww * .42));
+      g.font = `800 ${fs}px "Baloo 2", system-ui, sans-serif`;
+      g.textAlign = "center"; g.textBaseline = "alphabetic";
+      g.fillStyle = m === 60 ? "#2f6fe0" : "#4a4f5c";
+      g.fillText(String(whiteIdx(m) + 1), x + L.ww / 2, ky + kh - 8);
+      if (m % 12 === 0 && L.ww > 18) {
+        g.font = `700 ${Math.max(8, fs * .62)}px "Nunito Sans", system-ui, sans-serif`;
+        g.fillStyle = "#9aa0ad";
+        g.fillText("Dó", x + L.ww / 2, ky + kh - 8 - fs);
+      }
+    });
+    for (let m = session.lo; m <= session.hi; m++) {
+      if (!isBlack(m)) continue;
+      const x = keyX(m);
+      const lit = fillFor(lightOf(m));
+      g.fillStyle = lit || (want.has(m) ? (want.get(m) === "lh" ? "#6b57e8" : "#e8691f") : "#15171c");
+      rr(x, ky, L.bw, bh, 3); g.fill();
+      if (!lit && !want.has(m)) { g.fillStyle = "#2d3038"; g.fillRect(x + 2, ky + bh - 6, L.bw - 4, 4); }
+    }
+    // dica de "esperando"
+    if (waitingNotes.length && !session.paused && !session.done) {
+      const label = `Toque a tecla ${waitingNotes.map((u) => keyNum(u.midi)).join(" + ")}`;
+      g.font = `700 14px "Nunito Sans", system-ui, sans-serif`;
+      const tw = g.measureText(label).width + 20;
+      const cx = W / 2, y = 12;
+      g.fillStyle = "rgba(23,26,35,.92)"; rr(cx - tw / 2, y, tw, 26, 13); g.fill();
+      g.fillStyle = "#eef0f6"; g.textAlign = "center"; g.textBaseline = "middle";
+      g.fillText(label, cx, y + 13);
+    }
+    // contagem antes de começar
+    if (pos < 0 && !session.paused) {
+      g.font = `800 ${Math.min(90, H * .2)}px "Baloo 2", system-ui, sans-serif`;
+      g.fillStyle = "rgba(238,240,246,.85)"; g.textAlign = "center"; g.textBaseline = "middle";
+      g.fillText(String(Math.ceil(-pos)), W / 2, L.hitY / 2);
+    }
+    if (session.paused) {
+      g.fillStyle = "rgba(13,15,21,.55)"; g.fillRect(0, 0, W, L.hitY);
+      g.font = `800 34px "Baloo 2", system-ui, sans-serif`; g.fillStyle = "#eef0f6";
+      g.textAlign = "center"; g.textBaseline = "middle"; g.fillText("Pausado", W / 2, L.hitY / 2);
+    }
+  }
+
+  let lastFrame = performance.now();
+  function loop(now) {
+    const dt = Math.min(.05, (now - lastFrame) / 1000);
+    lastFrame = now;
+    if (session.active) { micTick(); update(dt); draw(now); }
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+
+  // ---------- Tocar na tela ----------
+  const pointers = new Map();
+  function keyAt(px, py) {
+    if (!layout || py < layout.hitY) return null;
+    const L = layout;
+    if (py < L.hitY + L.kbH * .62) {
+      for (let m = session.lo; m <= session.hi; m++) {
+        if (isBlack(m)) { const x = keyX(m); if (px >= x && px <= x + L.bw) return m; }
+      }
+    }
+    const i = Math.floor(px / L.ww);
+    return L.whites[i] ?? null;
+  }
+  const local = (e) => { const r = cv.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
+  cv.addEventListener("pointerdown", (e) => {
+    e.preventDefault();
+    try { cv.setPointerCapture(e.pointerId); } catch (err) {}
+    const m = keyAt(...local(e));
+    pointers.set(e.pointerId, m);
+    if (m != null) onInput(m, "screen");
+  });
+  cv.addEventListener("pointermove", (e) => {
+    if (!pointers.has(e.pointerId)) return;
+    const m = keyAt(...local(e));
+    if (m !== pointers.get(e.pointerId)) { pointers.set(e.pointerId, m); if (m != null) onInput(m, "screen"); }
+  });
+  ["pointerup", "pointercancel"].forEach((t) => cv.addEventListener(t, (e) => pointers.delete(e.pointerId)));
+  cv.addEventListener("contextmenu", (e) => e.preventDefault());
+
+  // ---------- Teclado do computador ----------
+  const CODE_OFFSET = { KeyA: 0, KeyW: 1, KeyS: 2, KeyE: 3, KeyD: 4, KeyF: 5, KeyT: 6, KeyG: 7, KeyY: 8, KeyH: 9, KeyU: 10, KeyJ: 11, KeyK: 12, KeyO: 13, KeyL: 14, KeyP: 15, Semicolon: 16, Quote: 17 };
+  let kbBase = 48;
+  window.addEventListener("keydown", (e) => {
+    if (!session.active || e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
+    if (e.code === "Space") { e.preventDefault(); togglePause(); return; }
+    if (e.code === "KeyZ") { kbBase = Math.max(session.lo, kbBase - 12); toast(`Teclado do computador começa na tecla ${whiteIdx(kbBase) + 1}`, 1500); return; }
+    if (e.code === "KeyX") { kbBase = Math.min(session.hi - 11, kbBase + 12); toast(`Teclado do computador começa na tecla ${whiteIdx(kbBase) + 1}`, 1500); return; }
+    if (e.code in CODE_OFFSET) { e.preventDefault(); onInput(kbBase + CODE_OFFSET[e.code], "keys"); }
+  });
+
+  // ---------- Controles da sessão ----------
+  let toastTimer = 0;
+  function toast(msg, ms = 2500) {
+    const t = $("toast");
+    t.textContent = msg; t.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => (t.hidden = true), ms);
+  }
+  function togglePause() {
+    if (session.done) return;
+    session.paused = !session.paused;
+    $("sPause").textContent = session.paused ? "Continuar" : "Pausar";
+  }
+  $("sPause").onclick = togglePause;
+  $("sRestart").onclick = () => { ensureAudio(); startSession(); };
+  $("sBack").onclick = leaveSession;
+  $("sDemo").onclick = () => {
+    ensureAudio();
+    const wantDemo = !session.demo;
+    startSession();
+    session.demo = wantDemo || session.total === 0;
+    $("sDemo").setAttribute("aria-pressed", String(session.demo));
+    toast(session.demo ? "Ouvindo a música. Siga os números." : "Sua vez de tocar.", 2000);
+  };
+  const setTempo = (v) => { session.tempo = Math.max(.4, Math.min(1.5, Math.round(v * 10) / 10)); $("tVal").textContent = Math.round(session.tempo * 100) + "%"; };
+  $("tDown").onclick = () => setTempo(session.tempo - .1);
+  $("tUp").onclick = () => setTempo(session.tempo + .1);
+  $("rAgain").onclick = () => { $("result").hidden = true; startSession(); };
+  $("rSongs").onclick = () => { session.active = false; show("library"); };
+
+  renderLibrary();
+})();
+</script>
+
+</body>
+</html>
