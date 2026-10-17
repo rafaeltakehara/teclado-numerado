@@ -242,6 +242,11 @@ h1, h2, h3 { font-family: var(--font-display); line-height: 1.1; margin: 0; text
         <button class="opt" data-v="wait"><i class="dot"></i><div><b>Esperar por mim</b><span>As notas param na linha até você acertar a tecla.</span></div></button>
         <button class="opt" data-v="flow"><i class="dot"></i><div><b>No ritmo da música</b><span>As notas não param. Ajuste a velocidade na sessão.</span></div></button>
       </div>
+      <h3>Versão</h3>
+      <div class="opt-list" id="easyList">
+        <button class="opt" data-v="easy"><i class="dot"></i><div><b>Fácil</b><span>Todas as notas com o mesmo tempo, só a mão direita. Bom para começar.</span></div></button>
+        <button class="opt" data-v="normal"><i class="dot"></i><div><b>Original</b><span>Com o ritmo da música e as duas mãos, quando tiver.</span></div></button>
+      </div>
       <h3>Onde você vai tocar</h3>
       <div class="opt-list" id="inputList">
         <button class="opt" data-v="mic"><i class="dot"></i><div><b>No meu teclado</b><span>O app ouve pelo microfone do celular.</span></div></button>
@@ -353,6 +358,9 @@ h1, h2, h3 { font-family: var(--font-display); line-height: 1.1; margin: 0; text
     { id: "perfect", title: "Perfect", by: "Ed Sheeran · acordes", tag: "Pop", level: 1, tempo: 92, mono: "P", c: ["#ff8a3d", "#e8487a"],
       rh: "B3 D4 G4 D4 B3 E4 G4 E4 C4 E4 G4 E4 A3 D4 F#4 D4 B3 D4 G4 D4 B3 E4 G4 E4 C4 E4 G4 E4 A3 D4 F#4 D4 B3 D4 G4 D4 B3 E4 G4 E4 C4 E4 G4 E4 A3 D4 F#4 D4 B3 D4 G4:2",
       lh: "G2:4 E2:4 C3:4 D3:4 G2:4 E2:4 C3:4 D3:4 G2:4 E2:4 C3:4 D3:4 G2:4" },
+    { id: "ipanema", title: "Garota de Ipanema", by: "Tom Jobim e Vinicius de Moraes · acordes", tag: "MPB", level: 1, tempo: 88, mono: "GI", c: ["#2bb673", "#f2b632"],
+      rh: "C4 E4 G4 B4 C4 E4 G4 B4 D4 F#4 A4 C5 D4 F#4 A4 C5 D4 F4 A4 C5 B3 D4 F4 G4 C4 E4 G4 B4 B3 D4 F4 G4 C4 E4 G4 B4 C4 E4 G4 B4 D4 F#4 A4 C5 D4 F#4 A4 C5 D4 F4 A4 C5 B3 D4 F4 G4 C4 E4 G4 B4 B3 D4 F4 G4 C4 E4 G4:2",
+      lh: "C3:4 C3:4 D3:4 D3:4 D3:4 G2:4 C3:4 G2:4 C3:4 C3:4 D3:4 D3:4 D3:4 G2:4 C3:4 G2:4 C3:4" },
   ];
 
   function parseSeq(str, hand) {
@@ -509,7 +517,7 @@ h1, h2, h3 { font-family: var(--font-display); line-height: 1.1; margin: 0; text
   }
 
   // ---------- Estado ----------
-  const prefs = { lh: "off", rh: "user", mode: "wait", input: "mic" };
+  const prefs = { lh: "off", rh: "user", mode: "wait", input: "mic", easy: "easy" };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem("tn-prefs") || "{}")); } catch (e) {}
   const savePrefs = () => { try { localStorage.setItem("tn-prefs", JSON.stringify(prefs)); } catch (e) {} };
 
@@ -520,7 +528,7 @@ h1, h2, h3 { font-family: var(--font-display); line-height: 1.1; margin: 0; text
   // ---------- Biblioteca ----------
   let filter = "Todas";
   function renderLibrary() {
-    const tags = ["Todas", ...new Set(SONGS.map((s) => s.tag))];
+    const tags = ["Todas", "Fáceis", ...new Set(SONGS.map((s) => s.tag))];
     $("filters").innerHTML = "";
     tags.forEach((t) => {
       const b = document.createElement("button");
@@ -529,7 +537,7 @@ h1, h2, h3 { font-family: var(--font-display); line-height: 1.1; margin: 0; text
       $("filters").appendChild(b);
     });
     $("grid").innerHTML = "";
-    SONGS.filter((s) => filter === "Todas" || s.tag === filter).forEach((s) => {
+    SONGS.filter((s) => filter === "Todas" || (filter === "Fáceis" ? s.level === 1 : s.tag === filter)).forEach((s) => {
       const b = document.createElement("button");
       b.className = "card";
       b.innerHTML = `${monoHTML(s)}<div><h3></h3><div class="by"></div><div class="meta-row"><span class="tag"></span>${levelHTML(s.level)}</div></div>`;
@@ -565,11 +573,12 @@ h1, h2, h3 { font-family: var(--font-display); line-height: 1.1; margin: 0; text
     [...groupEl.querySelectorAll("[data-v]")].forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.v === v)));
   }
   function renderSetup() {
-    const hasLH = !!current.lh;
+    const hasLH = !!current.lh && prefs.easy !== "easy";
     [...$("lhSeg").children].forEach((b) => (b.disabled = !hasLH && b.dataset.v !== "off"));
     const lh = hasLH ? prefs.lh : "off";
     setPressed($("lhSeg"), lh);
-    $("lhSub").textContent = hasLH ? "Baixo" : "Não tem nesta música";
+    $("lhSub").textContent = hasLH ? "Baixo" : current.lh ? "Desligada na versão fácil" : "Não tem nesta música";
+    setPressed($("easyList"), prefs.easy);
     $("lhCard").classList.toggle("off", lh === "off");
     setPressed($("rhSeg"), prefs.rh);
     setPressed($("modeList"), prefs.mode);
@@ -583,6 +592,7 @@ h1, h2, h3 { font-family: var(--font-display); line-height: 1.1; margin: 0; text
   $("lhSeg").addEventListener("click", (e) => { const b = e.target.closest("[data-v]"); if (b && !b.disabled) { prefs.lh = b.dataset.v; savePrefs(); renderSetup(); } });
   $("rhSeg").addEventListener("click", (e) => { const b = e.target.closest("[data-v]"); if (b) { prefs.rh = b.dataset.v; savePrefs(); renderSetup(); } });
   $("modeList").addEventListener("click", (e) => { const b = e.target.closest("[data-v]"); if (b) { prefs.mode = b.dataset.v; savePrefs(); renderSetup(); } });
+  $("easyList").addEventListener("click", (e) => { const b = e.target.closest("[data-v]"); if (b) { prefs.easy = b.dataset.v; savePrefs(); renderSetup(); } });
   $("inputList").addEventListener("click", (e) => { const b = e.target.closest("[data-v]"); if (b) { prefs.input = b.dataset.v; savePrefs(); renderSetup(); } });
   $("detailBack").onclick = () => show("library");
 
@@ -603,9 +613,10 @@ h1, h2, h3 { font-family: var(--font-display); line-height: 1.1; margin: 0; text
   // ---------- Sessão ----------
   function startSession() {
     const s = current;
-    const lh = s.lh ? prefs.lh : "off";
+    const easy = prefs.easy === "easy";
+    const lh = s.lh && !easy ? prefs.lh : "off";
     const notes = [];
-    s.rhNotes.forEach((n) => notes.push({ ...n, who: prefs.rh }));
+    s.rhNotes.forEach((n, i) => notes.push(easy ? { ...n, t: i, d: 1, who: prefs.rh } : { ...n, who: prefs.rh }));
     if (lh !== "off") s.lhNotes.forEach((n) => notes.push({ ...n, who: lh }));
     notes.sort((a, b) => a.t - b.t || a.midi - b.midi);
     notes.forEach((n) => { n.hit = false; n.missed = false; n.played = false; n.flash = 0; });
@@ -616,6 +627,7 @@ h1, h2, h3 { font-family: var(--font-display); line-height: 1.1; margin: 0; text
     if (hi - lo < 23) hi = lo + 23;              // pelo menos duas oitavas
     Object.assign(session, {
       active: true, notes, pos: -3.5, paused: false, done: false, lo, hi,
+      beats: easy ? s.rhNotes.length : s.beats,
       hits: 0, wrong: 0, missed: 0, total: notes.filter((n) => n.who === "user").length,
     });
     session.demo = session.total === 0;
@@ -667,8 +679,8 @@ h1, h2, h3 { font-family: var(--font-display); line-height: 1.1; margin: 0; text
         n.missed = true; session.missed++;
       }
     }
-    $("prog").style.width = Math.max(0, Math.min(100, (session.pos / current.beats) * 100)) + "%";
-    if (session.pos >= current.beats + .8) finish();
+    $("prog").style.width = Math.max(0, Math.min(100, (session.pos / session.beats) * 100)) + "%";
+    if (session.pos >= session.beats + .8) finish();
   }
 
   function onInput(midi, source) {
